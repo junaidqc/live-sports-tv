@@ -20,13 +20,23 @@ export function useStreamHealth() {
   }, []);
 
   const checkChannelHealth = async (channelUrl) => {
+    // 1. Try local/configured proxy
     try {
       const res = await fetch(`/api/health?url=${encodeURIComponent(channelUrl)}`);
-      if (!res.ok) {
-        return { alive: false, status: res.status };
+      if (res.ok) {
+        const data = await res.json();
+        return data;
       }
-      const data = await res.json();
-      return data;
+    } catch {}
+
+    // 2. Direct client fallback (HEAD/GET with no-cors for static deployments)
+    try {
+      const startTime = Date.now();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      await fetch(channelUrl, { method: 'HEAD', mode: 'no-cors', signal: controller.signal });
+      clearTimeout(timeout);
+      return { alive: true, status: 200, latencyMs: Date.now() - startTime };
     } catch {
       return { alive: false, status: 0 };
     }

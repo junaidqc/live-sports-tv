@@ -3,7 +3,7 @@
  */
 
 const STORAGE_KEYS = {
-  PLAYLISTS: 'sports_tv_playlists_v2',
+  PLAYLISTS: 'sports_tv_playlists_v4',
   FAVORITES: 'sports_tv_favorites_v2',
   RECENT: 'sports_tv_recent_v2',
   LAST_CHANNEL: 'sports_tv_last_channel_v2',
@@ -28,7 +28,7 @@ export const DEFAULT_PLAYLISTS = [
     id: 'iptv-index-sports',
     name: 'IPTV-Org Global Index (Sports Filtered)',
     url: 'https://iptv-org.github.io/iptv/index.m3u',
-    enabled: true,
+    enabled: false,
     isDefault: true,
     filterOnlySports: true
   }

@@ -2,6 +2,70 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Storage, DEFAULT_PLAYLISTS } from '../utils/storage';
 import { parseM3U } from '../utils/m3uParser';
 import { SPORT_CATEGORIES } from '../config/categories';
+import { FALLBACK_SPORTS_M3U } from '../data/sportsFallback';
+
+/**
+ * Resilient multi-tier playlist fetcher:
+ * 1. Direct fetch (fastest, succeeds for CORS-friendly sources like iptv-org.github.io)
+ * 2. Local Express proxy /api/playlist?url= (when local Node backend is active)
+ * 3. Public CORS proxy fallback (when hosted statically on GitHub Pages / Vercel without Node)
+ * 4. Bundled fallback sports playlist (instant zero-network fail-safe)
+ */
+async function fetchPlaylistContent(playlist) {
+  if (playlist.rawContent) {
+    return playlist.rawContent;
+  }
+
+  const url = playlist.url;
+  if (!url) return '';
+
+  // 1. Direct fetch
+  try {
+    const directRes = await fetch(url, { headers: { Accept: '*/*' } });
+    if (directRes.ok) {
+      const text = await directRes.text();
+      if (text && text.includes('#EXTM3U')) {
+        return text;
+      }
+    }
+  } catch (err) {
+    console.warn(`Direct fetch failed for ${playlist.name}, trying backend proxy...`, err);
+  }
+
+  // 2. Express backend proxy (/api/playlist?url=...)
+  try {
+    const proxyRes = await fetch(`/api/playlist?url=${encodeURIComponent(url)}`);
+    if (proxyRes.ok) {
+      const text = await proxyRes.text();
+      if (text && text.includes('#EXTM3U')) {
+        return text;
+      }
+    }
+  } catch (err) {
+    console.warn(`Local proxy failed for ${playlist.name}, trying public CORS proxy...`, err);
+  }
+
+  // 3. Public CORS proxy fallback
+  try {
+    const publicProxyRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    if (publicProxyRes.ok) {
+      const text = await publicProxyRes.text();
+      if (text && text.includes('#EXTM3U')) {
+        return text;
+      }
+    }
+  } catch (err) {
+    console.warn(`Public proxy failed for ${playlist.name}`, err);
+  }
+
+  // 4. Bundled fallback for official sports playlist
+  if (playlist.id === 'iptv-sports' || url.includes('categories/sports.m3u')) {
+    console.info(`Using bundled fallback sports playlist for ${playlist.name}`);
+    return FALLBACK_SPORTS_M3U;
+  }
+
+  throw new Error(`Failed to fetch playlist (Status: unreachable)`);
+}
 
 export function usePlaylists() {
   const [playlists, setPlaylists] = useState(() => Storage.getPlaylists());
@@ -28,16 +92,7 @@ export function usePlaylists() {
 
     for (const playlist of enabled) {
       try {
-        let content = '';
-        if (playlist.rawContent) {
-          content = playlist.rawContent;
-        } else if (playlist.url) {
-          const res = await fetch(`/api/playlist?url=${encodeURIComponent(playlist.url)}`);
-          if (!res.ok) {
-            throw new Error(`Failed to fetch playlist (Status: ${res.status})`);
-          }
-          content = await res.text();
-        }
+        const content = await fetchPlaylistContent(playlist);
 
         if (content) {
           const parsed = parseM3U(content, playlist.id, playlist.filterOnlySports);
@@ -54,6 +109,7 @@ export function usePlaylists() {
       }
     }
 
+    // Only set visible error if zero channels were loaded from all enabled sources
     if (errors.length > 0 && allChannels.length === 0) {
       setError(errors.join(', '));
     }
@@ -66,7 +122,6 @@ export function usePlaylists() {
     if (savedLast && allChannels.some((c) => c.url === savedLast.url)) {
       setActiveChannel(savedLast);
     } else if (allChannels.length > 0) {
-      // Pick first channel from football or general sports
       const firstPick =
         allChannels.find((c) => c.category === 'football') ||
         allChannels.find((c) => c.category === 'cricket') ||
