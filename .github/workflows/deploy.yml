@@ -24,25 +24,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Install Root Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Install Server Dependencies
-        run: cd server && (npm ci || npm install)
+        run: cd server && npm install
 
       - name: Install Client Dependencies
-        run: cd client && (npm ci || npm install)
-
-      - name: Start Server in Background for E2E Tests
-        run: |
-          node server/index.js &
-          sleep 3
-
-      - name: Run Automated Test Suite
-        run: npm test
+        run: cd client && npm install
 
       - name: Build Client for GitHub Pages
         run: |
@@ -53,6 +44,14 @@ jobs:
 
       - name: Copy 404 for SPA Routing on GitHub Pages
         run: cp client/dist/index.html client/dist/404.html
+
+      - name: Start Server in Background for E2E Tests
+        run: |
+          node server/index.js &
+          sleep 3
+
+      - name: Run Automated Test Suite
+        run: npm test
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
