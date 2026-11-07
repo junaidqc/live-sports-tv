@@ -1,5 +1,5 @@
-import { parseM3U } from './client/src/utils/m3uParser.js';
-import { SPORT_CATEGORIES } from './client/src/config/categories.js';
+import { parseM3U } from '../client/src/utils/m3uParser.js';
+import { SPORT_CATEGORIES } from '../client/src/config/categories.js';
 
 async function runE2ETests() {
   console.log('--- STARTING E2E VERIFICATION ---');
