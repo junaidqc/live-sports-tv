@@ -72,6 +72,9 @@ export default function App() {
           {/* Top Sticky Navbar */}
           <Navbar
             totalChannels={playlistsHook.totalChannels}
+            verifiedCount={playlistsHook.verifiedCount}
+            verifiedOnly={playlistsHook.verifiedOnly}
+            toggleVerifiedOnly={playlistsHook.toggleVerifiedOnly}
             favoritesCount={favoritesHook.favoritesCount}
             theme={theme}
             toggleTheme={toggleTheme}
